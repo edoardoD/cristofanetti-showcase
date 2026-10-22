@@ -1,0 +1,40 @@
+name: Sincronizzazione Prezzi Medi Regionali MIMIT
+
+on:
+  schedule:
+    # Esegue ogni mattina alle 06:30 UTC (08:30 ora italiana), dopo la pubblicazione ministeriale delle 08:00
+    - cron: '30 6 * * *'
+  workflow_dispatch: # Permette l'avvio manuale su richiesta da GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  sync-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Installa Dipendenze
+        run: npm ci || npm install
+
+      - name: Esegui Sincronizzazione Prezzi Medi MIMIT
+        run: node scripts/sync-mimit-prices.mjs
+
+      - name: Esegui Build Statica Next.js
+        run: npm run build
+
+      - name: Commit e Push Dati Aggiornati
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action - MIMIT Price Bot"
+          git add public/data/fuel-prices.json
+          git diff --staged --quiet || git commit -m "chore(data): aggiornamento automatico prezzi medi regionali MIMIT [skip ci]"
+          git push || echo "Nessuna modifica da inviare"

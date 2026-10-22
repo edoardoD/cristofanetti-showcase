@@ -1,0 +1,57 @@
+{
+  "source": "Ministero delle Imprese e del Made in Italy (MIMIT) - Osservaprezzi Carburanti",
+  "legalReference": "Decreto Legge 14 gennaio 2023, n. 5",
+  "lastUpdate": "2026-10-22T13:04:23.956Z",
+  "lastUpdateDisplay": "Rilevazione MIMIT del 22/10/2026 ore 15:04",
+  "regions": {
+    "emilia-romagna": {
+      "region": "Emilia-Romagna (Sede Forlì)",
+      "isHomeRegion": true,
+      "metanoKg": 1.348,
+      "gplKg": 1.324,
+      "gplLitro": 0.715,
+      "benzinaLitro": 1.785,
+      "benzinaKg": 2.412
+    },
+    "lombardia": {
+      "region": "Lombardia",
+      "metanoKg": 1.352,
+      "gplKg": 1.331,
+      "gplLitro": 0.719,
+      "benzinaLitro": 1.792,
+      "benzinaKg": 2.422
+    },
+    "veneto": {
+      "region": "Veneto",
+      "metanoKg": 1.345,
+      "gplKg": 1.32,
+      "gplLitro": 0.713,
+      "benzinaLitro": 1.782,
+      "benzinaKg": 2.408
+    },
+    "toscana": {
+      "region": "Toscana",
+      "metanoKg": 1.365,
+      "gplKg": 1.342,
+      "gplLitro": 0.725,
+      "benzinaLitro": 1.798,
+      "benzinaKg": 2.43
+    },
+    "marche": {
+      "region": "Marche",
+      "metanoKg": 1.35,
+      "gplKg": 1.328,
+      "gplLitro": 0.717,
+      "benzinaLitro": 1.788,
+      "benzinaKg": 2.416
+    },
+    "italia-media": {
+      "region": "Media Nazionale Italia",
+      "metanoKg": 1.355,
+      "gplKg": 1.33,
+      "gplLitro": 0.718,
+      "benzinaLitro": 1.79,
+      "benzinaKg": 2.419
+    }
+  }
+}

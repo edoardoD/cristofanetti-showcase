@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build artifacts
+.next/
+out/
+
+# Production
+build/
+dist/
+
+# Subagent teamwork & internal logs
+.agents/
+*.log
+
+# Environment variables
+.env*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
