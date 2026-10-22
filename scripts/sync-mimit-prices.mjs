@@ -18,51 +18,51 @@ const regionalDefaults = {
   "emilia-romagna": {
     region: "Emilia-Romagna (Sede Forlì)",
     isHomeRegion: true,
-    metanoKg: 1.348,
-    gplKg: 1.324,
-    gplLitro: 0.715,
-    benzinaLitro: 1.785,
-    benzinaKg: 2.412
+    metanoKg: 1.930,
+    gplKg: 1.425,
+    gplLitro: 0.770,
+    benzinaLitro: 1.849,
+    benzinaKg: 2.498
   },
   "lombardia": {
     region: "Lombardia",
-    metanoKg: 1.352,
-    gplKg: 1.331,
-    gplLitro: 0.719,
-    benzinaLitro: 1.792,
-    benzinaKg: 2.422
+    metanoKg: 1.935,
+    gplKg: 1.435,
+    gplLitro: 0.775,
+    benzinaLitro: 1.855,
+    benzinaKg: 2.507
   },
   "veneto": {
     region: "Veneto",
-    metanoKg: 1.345,
-    gplKg: 1.320,
-    gplLitro: 0.713,
-    benzinaLitro: 1.782,
-    benzinaKg: 2.408
+    metanoKg: 1.925,
+    gplKg: 1.418,
+    gplLitro: 0.766,
+    benzinaLitro: 1.842,
+    benzinaKg: 2.489
   },
   "toscana": {
     region: "Toscana",
-    metanoKg: 1.365,
-    gplKg: 1.342,
-    gplLitro: 0.725,
-    benzinaLitro: 1.798,
-    benzinaKg: 2.430
+    metanoKg: 1.945,
+    gplKg: 1.442,
+    gplLitro: 0.779,
+    benzinaLitro: 1.862,
+    benzinaKg: 2.516
   },
   "marche": {
     region: "Marche",
-    metanoKg: 1.350,
-    gplKg: 1.328,
-    gplLitro: 0.717,
-    benzinaLitro: 1.788,
-    benzinaKg: 2.416
+    metanoKg: 1.932,
+    gplKg: 1.429,
+    gplLitro: 0.772,
+    benzinaLitro: 1.848,
+    benzinaKg: 2.497
   },
   "italia-media": {
     region: "Media Nazionale Italia",
-    metanoKg: 1.355,
-    gplKg: 1.330,
-    gplLitro: 0.718,
-    benzinaLitro: 1.790,
-    benzinaKg: 2.419
+    metanoKg: 1.938,
+    gplKg: 1.431,
+    gplLitro: 0.773,
+    benzinaLitro: 1.850,
+    benzinaKg: 2.500
   }
 };
 
