@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "sync-prices": "node scripts/sync-mimit-prices.mjs",
+    "test:e2e": "node tests/e2e/test-runner.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
