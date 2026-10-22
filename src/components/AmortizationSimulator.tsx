@@ -6,16 +6,15 @@ import { BreakEvenChart } from "@/components/BreakEvenChart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Calculator,
   Fuel,
   RefreshCw,
   MapPin,
   CheckCircle2,
   Car,
   ArrowRight,
-  TrendingUp,
   Info,
   Scale,
+  Sparkles,
 } from "lucide-react";
 
 interface AmortizationSimulatorProps {
@@ -23,22 +22,31 @@ interface AmortizationSimulatorProps {
 }
 
 export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProps) {
-  // Input states - default to Emilia-Romagna (home region of Cristofanetti in Forlì)
-  const [selectedRegionKey, setSelectedRegionKey] = useState<string>("emilia-romagna");
+  // Input states - default to Forlì-Cesena (Emilia-Romagna)
+  const [selectedRegionKey, setSelectedRegionKey] = useState<string>("forli");
   const [fuelType, setFuelType] = useState<"metano" | "gpl">("metano");
   const [annualKm, setAnnualKm] = useState<number>(15000);
   const [interventionCost, setInterventionCost] = useState<number>(200);
   const [selectedPresetId, setSelectedPresetId] = useState<string>("polo-aw1-2bombole");
 
-  // Regional prices state (strictly al kg)
-  const defaultRegion = regionalFuelPrices[selectedRegionKey] || regionalFuelPrices["emilia-romagna"];
+  // Regional prices state (strictly al kg for gas, and €/L for benzina)
+  const defaultRegion = regionalFuelPrices[selectedRegionKey] || regionalFuelPrices["forli"];
   const [currentMetanoKg, setCurrentMetanoKg] = useState<number>(defaultRegion.metanoKg);
   const [currentGplKg, setCurrentGplKg] = useState<number>(defaultRegion.gplKg);
   const [currentBenzinaLitro, setCurrentBenzinaLitro] = useState<number>(defaultRegion.benzinaLitro);
+  const [cheapestMetanoStation, setCheapestMetanoStation] = useState<string | null>(
+    defaultRegion.cheapestMetanoStation || null
+  );
+  const [cheapestGplStation, setCheapestGplStation] = useState<string | null>(
+    defaultRegion.cheapestGplStation || null
+  );
+  const [stationsCountInfo, setStationsCountInfo] = useState<string>(
+    `${defaultRegion.metanoStationsCount || 7} imp. Metano / ${defaultRegion.benzinaStationsCount || 44} Benzina`
+  );
 
-  // Live MIMIT API simulation states
+  // Live API states
   const [isUpdatingApi, setIsUpdatingApi] = useState<boolean>(false);
-  const [lastSyncTime, setLastSyncTime] = useState<string>("Oggi, rilevazione MIMIT ore 08:30");
+  const [lastSyncTime, setLastSyncTime] = useState<string>("API Live MIMIT / MappaCarburanti");
   const [showApiModal, setShowApiModal] = useState<boolean>(false);
 
   // Accessible unique IDs for form controls
@@ -49,6 +57,94 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
   const gplPriceId = useId();
   const benzinaPriceId = useId();
 
+  // Fetch directly from live CORS-open API (mappacarburanti.it -> MIMIT Open Data) with local JSON fallback
+  const fetchLivePricesForKey = async (regionKey: string) => {
+    setIsUpdatingApi(true);
+    const regConfig = regionalFuelPrices[regionKey] || regionalFuelPrices["forli"];
+
+    try {
+      // 1. Try direct live CORS-enabled Open Data API endpoint
+      const liveRes = await fetch(regConfig.apiEndpoint);
+      if (liveRes.ok) {
+        const liveData = await liveRes.json();
+        if (regConfig.slug === "national" && liveData.fuels) {
+          const bAvg = parseFloat((liveData.fuels.benzina?.avg || regConfig.benzinaLitro).toFixed(3));
+          const gLitro = parseFloat((liveData.fuels.gpl?.avg || regConfig.gplLitro).toFixed(3));
+          const mKg = parseFloat((liveData.fuels.metano?.avg || regConfig.metanoKg).toFixed(3));
+          setCurrentBenzinaLitro(bAvg);
+          setCurrentGplKg(parseFloat((gLitro / 0.54).toFixed(3)));
+          setCurrentMetanoKg(mKg);
+          setCheapestMetanoStation(null);
+          setCheapestGplStation(null);
+          setStationsCountInfo(`${liveData.total_stations || 21517} distributori nazionali`);
+          setLastSyncTime(`API Live (${liveData.date || "Oggi"})`);
+          setIsUpdatingApi(false);
+          return;
+        } else if (liveData.fuels) {
+          const bAvg = parseFloat((liveData.fuels.benzina?.stats?.avg || regConfig.benzinaLitro).toFixed(3));
+          const gLitro = parseFloat((liveData.fuels.gpl?.stats?.avg || regConfig.gplLitro).toFixed(3));
+          const mKg = parseFloat((liveData.fuels.metano?.stats?.avg || regConfig.metanoKg).toFixed(3));
+
+          const validM = (liveData.fuels.metano?.top_10_cheapest || []).filter((s: { price: number }) => s.price >= 0.8);
+          const validG = (liveData.fuels.gpl?.top_10_cheapest || []).filter((s: { price: number }) => s.price >= 0.4);
+
+          setCurrentBenzinaLitro(bAvg);
+          setCurrentGplKg(parseFloat((gLitro / 0.54).toFixed(3)));
+          setCurrentMetanoKg(mKg);
+          setCheapestMetanoStation(
+            validM[0] ? `${validM[0].brand} — ${validM[0].address} (${validM[0].price.toFixed(3)} €/kg)` : regConfig.cheapestMetanoStation || null
+          );
+          setCheapestGplStation(
+            validG[0] ? `${validG[0].brand} — ${validG[0].address} (${validG[0].price.toFixed(3)} €/L)` : regConfig.cheapestGplStation || null
+          );
+          setStationsCountInfo(
+            `${liveData.fuels.metano?.stats?.count || 7} imp. Metano • ${liveData.fuels.gpl?.stats?.count || 12} GPL • ${liveData.fuels.benzina?.stats?.count || 44} Benzina`
+          );
+          setLastSyncTime(`API Live MIMIT (${liveData.date || "Oggi"})`);
+          setIsUpdatingApi(false);
+          return;
+        }
+      }
+    } catch {
+      // Fallback to local static JSON synced by GitHub Action
+    }
+
+    try {
+      const localRes = await fetch(`/data/fuel-prices.json?t=${Date.now()}`);
+      if (localRes.ok) {
+        const localData = await localRes.json();
+        const r = localData.regions?.[regionKey];
+        if (r) {
+          setCurrentMetanoKg(r.metanoKg);
+          setCurrentGplKg(r.gplKg);
+          setCurrentBenzinaLitro(r.benzinaLitro);
+          setCheapestMetanoStation(r.cheapestMetanoStation || null);
+          setCheapestGplStation(r.cheapestGplStation || null);
+          setStationsCountInfo(
+            `${r.metanoStationsCount || 7} imp. Metano • ${r.gplStationsCount || 12} GPL • ${r.benzinaStationsCount || 44} Benzina`
+          );
+          setLastSyncTime(localData.lastUpdateDisplay || "Sincronizzato MIMIT");
+          setIsUpdatingApi(false);
+          return;
+        }
+      }
+    } catch {
+      // Fallback to built-in verified dataset
+    }
+
+    setCurrentMetanoKg(regConfig.metanoKg);
+    setCurrentGplKg(regConfig.gplKg);
+    setCurrentBenzinaLitro(regConfig.benzinaLitro);
+    setCheapestMetanoStation(regConfig.cheapestMetanoStation || null);
+    setCheapestGplStation(regConfig.cheapestGplStation || null);
+    setIsUpdatingApi(false);
+  };
+
+  // Initial load & region switch
+  useEffect(() => {
+    fetchLivePricesForKey(selectedRegionKey);
+  }, [selectedRegionKey]);
+
   // Handle region change
   const handleRegionChange = (regionKey: string) => {
     setSelectedRegionKey(regionKey);
@@ -57,6 +153,8 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
       setCurrentMetanoKg(reg.metanoKg);
       setCurrentGplKg(reg.gplKg);
       setCurrentBenzinaLitro(reg.benzinaLitro);
+      setCheapestMetanoStation(reg.cheapestMetanoStation || null);
+      setCheapestGplStation(reg.cheapestGplStation || null);
     }
   };
 
@@ -67,60 +165,10 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
     setFuelType(preset.fuelType);
   };
 
-  // Load from /data/fuel-prices.json on mount
-  useEffect(() => {
-    fetch("/data/fuel-prices.json")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && data.regions && data.regions[selectedRegionKey]) {
-          const reg = data.regions[selectedRegionKey];
-          setCurrentMetanoKg(reg.metanoKg);
-          setCurrentGplKg(reg.gplKg);
-          setCurrentBenzinaLitro(reg.benzinaLitro);
-          if (data.lastUpdateDisplay) {
-            setLastSyncTime(data.lastUpdateDisplay);
-          }
-        }
-      })
-      .catch(() => {
-        // Fallback silently to static built-in regional defaults
-      });
-  }, [selectedRegionKey]);
-
-  // Refresh regional prices from live JSON / MIMIT API
-  const refreshRegionalPrices = () => {
-    setIsUpdatingApi(true);
-    fetch(`/data/fuel-prices.json?t=${Date.now()}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && data.regions && data.regions[selectedRegionKey]) {
-          const reg = data.regions[selectedRegionKey];
-          setCurrentMetanoKg(reg.metanoKg);
-          setCurrentGplKg(reg.gplKg);
-          setCurrentBenzinaLitro(reg.benzinaLitro);
-          setLastSyncTime(data.lastUpdateDisplay || "Sincronizzato MIMIT");
-        } else {
-          const base = regionalFuelPrices[selectedRegionKey] || regionalFuelPrices["emilia-romagna"];
-          setCurrentMetanoKg(base.metanoKg);
-          setCurrentGplKg(base.gplKg);
-          setCurrentBenzinaLitro(base.benzinaLitro);
-        }
-      })
-      .catch(() => {
-        const base = regionalFuelPrices[selectedRegionKey] || regionalFuelPrices["emilia-romagna"];
-        setCurrentMetanoKg(base.metanoKg);
-        setCurrentGplKg(base.gplKg);
-        setCurrentBenzinaLitro(base.benzinaLitro);
-      })
-      .finally(() => {
-        setTimeout(() => setIsUpdatingApi(false), 300);
-      });
-  };
-
   // Rigorous consumption models strictly per KG
   // 1. Metano: ~26.5 km con 1 kg di metano (consumo medio VW Polo TGI / ecofuel ~3.77 kg / 100km)
   const kmPerKgMetano = 26.5;
-  
+
   // 2. GPL: 1 kg di GPL liquido = ~1.85 litri (densità media miscela GPL propano/butano: ~0.54 kg/L).
   // A un consumo medio di 7.4 L / 100km (resa 13.5 km/L), la resa chilometrica per kg di GPL è:
   // 13.5 km/L * 1.85 L/kg = 25.0 km con 1 kg di GPL!
@@ -131,7 +179,7 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
 
   // Yearly fuel expenses
   const yearlyBenzinaCost = (annualKm / kmPerLitroBenzina) * currentBenzinaLitro;
-  
+
   const yearlyGasCost =
     fuelType === "metano"
       ? (annualKm / kmPerKgMetano) * currentMetanoKg
@@ -150,9 +198,6 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
   const cycleYears = fuelType === "metano" ? 4 : 10;
   const totalCycleNetSavings = yearlySavings * cycleYears - interventionCost;
 
-  // Active price per kg based on fuel selection
-  const activePriceKg = fuelType === "metano" ? currentMetanoKg : currentGplKg;
-
   return (
     <section id="simulatore" className="py-20 bg-slate-950 text-white relative overflow-hidden">
       {/* Background ambient lighting */}
@@ -160,7 +205,6 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
       <div className="absolute bottom-1/4 -left-40 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4 mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm">
@@ -173,23 +217,25 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
             Simulatore di Ammortamento al kg
           </h2>
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-            I calcoli sono parametrati sul <strong>prezzo medio regionale al kg</strong> rilevato dal Ministero delle Imprese e del Made in Italy (MIMIT), permettendo di quantificare esattamente il punto di pareggio dell'intervento nel tempo.
+            Collegato alle API Open Data ufficiali <strong>MIMIT / MappaCarburanti</strong>: i calcoli utilizzano i prezzi reali aggiornati di Benzina, Metano al kg e GPL al kg nella tua provincia.
           </p>
 
           {/* Real-Time Regional MIMIT Status Bar */}
           <div className="inline-flex flex-wrap items-center justify-center gap-3 px-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Prezzo Medio Regionale: <strong>{lastSyncTime}</strong></span>
+              <span>
+                Rilevazione Prezzi: <strong>{lastSyncTime}</strong> ({stationsCountInfo})
+              </span>
             </div>
             <span className="text-slate-600">|</span>
             <button
-              onClick={refreshRegionalPrices}
+              onClick={() => fetchLivePricesForKey(selectedRegionKey)}
               disabled={isUpdatingApi}
               className="inline-flex items-center gap-1.5 font-semibold text-sky-400 hover:text-sky-300 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isUpdatingApi ? "animate-spin" : ""}`} />
-              Aggiorna Prezzi Medi Live
+              Sincronizza API Ora
             </button>
             <span className="text-slate-600">|</span>
             <button
@@ -197,7 +243,7 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
               className="inline-flex items-center gap-1 text-slate-400 hover:text-white underline text-[11px]"
             >
               <Info className="w-3.5 h-3.5" />
-              Normativa MIMIT
+              Dettagli API JSON
             </button>
           </div>
         </div>
@@ -240,13 +286,12 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
 
         {/* Main Grid: Controls + Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
           {/* Controls Column (Left) */}
           <div className="lg:col-span-4 bg-slate-900/90 rounded-3xl p-6 border border-slate-800 shadow-xl space-y-5">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white">Parametri al kg</h3>
               <Badge variant="eco" className="text-[10px]">
-                Prezzo Medio MIMIT
+                API Live MIMIT
               </Badge>
             </div>
 
@@ -283,11 +328,11 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
               </div>
             </div>
 
-            {/* 2. Region Selector for Regional Average */}
+            {/* 2. City / Region Selector */}
             <div className="space-y-2">
               <label htmlFor={regionSelectId} className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5 text-red-500" />
-                2. Regione per Prezzo Medio Ufficiale
+                2. Provincia / Regione Rilevazione MIMIT
               </label>
               <select
                 id={regionSelectId}
@@ -306,12 +351,12 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
             {/* 3. Real-Time Regional Average Price Box AL KG */}
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="font-semibold text-white">Prezzo Medio Regionale al kg:</span>
-                <span className="text-[10px] text-emerald-400 font-mono">D.L. 5/2023 MIMIT</span>
+                <span className="font-semibold text-white">Prezzo Medio al kg Rilevato:</span>
+                <span className="text-[10px] text-emerald-400 font-mono">Open Data API</span>
               </div>
 
               {fuelType === "metano" ? (
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <label htmlFor={metanoPriceId} className="text-slate-400 block text-[11px]">
                     Metano Auto — Prezzo Medio al kg (€ / kg)
                   </label>
@@ -328,12 +373,17 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
                       € / kg
                     </span>
                   </div>
-                  <div className="text-[10px] text-slate-500 pt-0.5">
-                    Resa media vetture: ~26.5 km con 1 kg di metano (es. Polo TGI ~3.7 kg/100km)
-                  </div>
+                  {cheapestMetanoStation && (
+                    <div className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/20 text-[10px] text-emerald-300 flex items-start gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Più economico in zona:</strong> {cheapestMetanoStation}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <label htmlFor={gplPriceId} className="text-slate-400 block text-[11px]">
                     GPL Auto — Prezzo Medio al kg (€ / kg)
                   </label>
@@ -351,16 +401,24 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
                     </span>
                   </div>
                   <div className="text-[10px] text-slate-400 flex items-center justify-between pt-0.5">
-                    <span>Equivalente al litro: ~{(currentGplKg * 0.54).toFixed(3)} €/L</span>
-                    <span>1 kg GPL = ~1.85 L (25 km/kg)</span>
+                    <span>Prezzo alla pompa: ~{(currentGplKg * 0.54).toFixed(3)} €/L</span>
+                    <span>1 kg GPL = ~1.85 L</span>
                   </div>
+                  {cheapestGplStation && (
+                    <div className="p-2 rounded-lg bg-sky-950/40 border border-sky-500/20 text-[10px] text-sky-300 flex items-start gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Più economico in zona:</strong> {cheapestGplStation}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Benzina benchmark input */}
               <div className="pt-2 border-t border-slate-800 space-y-1">
                 <label htmlFor={benzinaPriceId} className="text-slate-400 block text-[11px]">
-                  Benzina di Riferimento — Prezzo Medio Regionale (€ / L)
+                  Benzina Self Rilevata — Prezzo Medio (€ / Litro)
                 </label>
                 <div className="relative">
                   <input
@@ -438,12 +496,10 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
                 (circa + {monthlySavings.toFixed(0)} € risparmiati ogni mese alla pompa)
               </div>
             </div>
-
           </div>
 
           {/* Right Column: Key Metrics & Break-Even Chart */}
           <div className="lg:col-span-8 space-y-6">
-            
             {/* Break-Even Highlight Banner */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
@@ -504,11 +560,8 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
-
           </div>
-
         </div>
-
       </div>
 
       {/* Info API Modal */}
@@ -518,7 +571,7 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h4 className="text-base font-bold text-white flex items-center gap-2">
                 <Info className="w-5 h-5 text-sky-400" />
-                Prezzi Medi Regionali MIMIT al kg
+                Endpoint API Live (MIMIT / MappaCarburanti JSON)
               </h4>
               <button
                 onClick={() => setShowApiModal(false)}
@@ -530,16 +583,16 @@ export function AmortizationSimulator({ onOpenQuote }: AmortizationSimulatorProp
 
             <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
               <p>
-                In base al <strong>Decreto Legge 14 gennaio 2023, n. 5</strong> (Trasparenza Prezzi Carburanti), il Ministero delle Imprese e del Made in Italy calcola e pubblica ogni mattina i <strong>Prezzi Medi Regionali</strong> per ogni tipologia di carburante.
+                Il simulatore interroga in tempo reale le API JSON Open Data derivate dal flusso giornaliero <strong>MIMIT Osservaprezzi Carburanti</strong> (licenza CC0, CORS aperto):
               </p>
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
-                <strong className="text-white block font-semibold">Specifiche di Calcolo al kg:</strong>
-                <ul className="list-disc list-inside space-y-1 text-slate-400">
-                  <li><strong>Metano</strong>: rilevazione ufficiale ministeriale espressa direttamente in <strong>€ / kg</strong>.</li>
-                  <li><strong>GPL</strong>: convertito e visualizzato in <strong>€ / kg</strong> applicando la densità media di omologazione autotrazione (~0.54 kg/L).</li>
-                  <li><strong>Regione di Riferimento</strong>: Emilia-Romagna (sede officina Cristofanetti a Forlì) con possibilità di selezione di altre regioni o inserimento manuale.</li>
-                </ul>
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2 font-mono text-[11px] text-sky-300 break-all">
+                <div>• https://mappacarburanti.it/api/prezzi/citta/forli.json</div>
+                <div>• https://mappacarburanti.it/api/prezzi/national.json</div>
               </div>
+              <ul className="list-disc list-inside space-y-1 text-slate-400">
+                <li><strong>Forlì (44 stazioni benzina, 7 metano, 12 GPL)</strong>: Benzina media <strong>2,009 €/L</strong>, Metano <strong>1,958 €/kg</strong>, GPL <strong>0,755 €/L (1,398 €/kg)</strong>.</li>
+                <li><strong>Media Nazionale (21.517 distributori)</strong>: Benzina <strong>2,032 €/L</strong>, Metano <strong>1,946 €/kg</strong>, GPL <strong>0,783 €/L (1,450 €/kg)</strong>.</li>
+              </ul>
             </div>
 
             <div className="pt-2 flex justify-end">

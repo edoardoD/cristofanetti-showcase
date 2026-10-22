@@ -293,63 +293,175 @@ export const brcPartnershipInfo = {
 
 export interface RegionalPriceData {
   region: string;
+  slug: string;
+  apiEndpoint: string;
   isHomeRegion?: boolean;
-  metanoKg: number;      // Prezzo medio regionale Metano al kg (€/kg)
-  gplKg: number;         // Prezzo medio regionale GPL al kg (€/kg)
-  gplLitro: number;      // Equivalente medio GPL al litro (€/L, densità ~0.54)
-  benzinaLitro: number;  // Prezzo medio regionale Benzina al litro (€/L)
-  benzinaKg: number;     // Equivalente Benzina al kg (€/kg, densità ~0.74)
+  metanoKg: number;      // Prezzo medio rilevato Metano al kg (€/kg)
+  gplKg: number;         // Prezzo medio rilevato GPL al kg (€/kg, densità ~0.54 kg/L)
+  gplLitro: number;      // Prezzo medio rilevato GPL al litro (€/L)
+  benzinaLitro: number;  // Prezzo medio rilevato Benzina al litro (€/L)
+  benzinaKg: number;     // Equivalente Benzina al kg (€/kg, densità ~0.74 kg/L)
+  gasolioLitro?: number; // Prezzo medio rilevato Gasolio al litro (€/L)
+  metanoStationsCount?: number;
+  gplStationsCount?: number;
+  benzinaStationsCount?: number;
+  cheapestMetanoStation?: string | null;
+  cheapestGplStation?: string | null;
 }
 
 export const regionalFuelPrices: Record<string, RegionalPriceData> = {
-  "emilia-romagna": {
-    region: "Emilia-Romagna (Sede Forlì)",
+  "forli": {
+    region: "Forlì-Cesena — Emilia-Romagna (Sede Officina)",
+    slug: "forli",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/forli.json",
     isHomeRegion: true,
-    metanoKg: 1.930,
-    gplKg: 1.425,
-    gplLitro: 0.770,
-    benzinaLitro: 1.849,
-    benzinaKg: 2.498
+    metanoKg: 1.958,
+    gplLitro: 0.755,
+    gplKg: 1.398,
+    benzinaLitro: 2.009,
+    benzinaKg: 2.715,
+    gasolioLitro: 2.223,
+    metanoStationsCount: 7,
+    gplStationsCount: 12,
+    benzinaStationsCount: 44,
+    cheapestMetanoStation: "Pompe Bianche - VIA PADULLI 19, FORLÌ (1.879 €/kg)",
+    cheapestGplStation: "Pompe Bianche - SS67 Tosco Romagnola, FORLÌ (0.729 €/L)"
   },
-  "lombardia": {
-    region: "Lombardia",
-    metanoKg: 1.935,
-    gplKg: 1.435,
+  "bologna": {
+    region: "Bologna — Emilia-Romagna",
+    slug: "bologna",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/bologna.json",
+    metanoKg: 1.974,
+    gplLitro: 0.795,
+    gplKg: 1.472,
+    benzinaLitro: 2.005,
+    benzinaKg: 2.709,
+    gasolioLitro: 2.237,
+    metanoStationsCount: 6,
+    gplStationsCount: 11,
+    benzinaStationsCount: 111,
+    cheapestMetanoStation: "AP - NUOVA BAZZANESE SS 569, BOLOGNA (1.849 €/kg)",
+    cheapestGplStation: "Beyfin - PERSICETANA VECCHIA 25, BOLOGNA (0.729 €/L)"
+  },
+  "ravenna": {
+    region: "Ravenna — Emilia-Romagna",
+    slug: "ravenna",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/ravenna.json",
+    metanoKg: 1.803,
+    gplLitro: 0.753,
+    gplKg: 1.394,
+    benzinaLitro: 2.007,
+    benzinaKg: 2.712,
+    gasolioLitro: 2.237,
+    metanoStationsCount: 7,
+    gplStationsCount: 11,
+    benzinaStationsCount: 41,
+    cheapestMetanoStation: "Q8 - Via Romea Nord 218, RAVENNA (1.989 €/kg)",
+    cheapestGplStation: "COIL - SS16 Adriatica Km 147, RAVENNA (0.718 €/L)"
+  },
+  "rimini": {
+    region: "Rimini — Emilia-Romagna",
+    slug: "rimini",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/rimini.json",
+    metanoKg: 1.986,
+    gplLitro: 0.756,
+    gplKg: 1.400,
+    benzinaLitro: 2.013,
+    benzinaKg: 2.720,
+    gasolioLitro: 2.240,
+    metanoStationsCount: 3,
+    gplStationsCount: 11,
+    benzinaStationsCount: 38,
+    cheapestMetanoStation: "Agip Eni - VIA FLAMINIA 191, RIMINI (1.969 €/kg)",
+    cheapestGplStation: "Api-Ip - Via Emilia 175, RIMINI (0.714 €/L)"
+  },
+  "modena": {
+    region: "Modena — Emilia-Romagna",
+    slug: "modena",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/modena.json",
+    metanoKg: 1.917,
+    gplLitro: 0.810,
+    gplKg: 1.500,
+    benzinaLitro: 2.009,
+    benzinaKg: 2.715,
+    gasolioLitro: 2.245
+  },
+  "milano": {
+    region: "Milano — Lombardia",
+    slug: "milano",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/milano.json",
+    metanoKg: 1.887,
+    gplLitro: 0.797,
+    gplKg: 1.476,
+    benzinaLitro: 2.020,
+    benzinaKg: 2.730,
+    gasolioLitro: 2.247
+  },
+  "venezia": {
+    region: "Venezia — Veneto",
+    slug: "venezia",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/venezia.json",
+    metanoKg: 1.958,
+    gplLitro: 0.794,
+    gplKg: 1.470,
+    benzinaLitro: 2.087,
+    benzinaKg: 2.820,
+    gasolioLitro: 2.252
+  },
+  "torino": {
+    region: "Torino — Piemonte",
+    slug: "torino",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/torino.json",
+    metanoKg: 1.863,
+    gplLitro: 0.793,
+    gplKg: 1.469,
+    benzinaLitro: 2.006,
+    benzinaKg: 2.711,
+    gasolioLitro: 2.251
+  },
+  "firenze": {
+    region: "Firenze — Toscana",
+    slug: "firenze",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/firenze.json",
+    metanoKg: 2.026,
+    gplLitro: 0.795,
+    gplKg: 1.472,
+    benzinaLitro: 2.003,
+    benzinaKg: 2.707,
+    gasolioLitro: 2.249
+  },
+  "ancona": {
+    region: "Ancona — Marche",
+    slug: "ancona",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/ancona.json",
+    metanoKg: 1.879,
+    gplLitro: 0.794,
+    gplKg: 1.470,
+    benzinaLitro: 2.002,
+    benzinaKg: 2.705,
+    gasolioLitro: 2.241
+  },
+  "roma": {
+    region: "Roma — Lazio",
+    slug: "roma",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/citta/roma.json",
+    metanoKg: 1.927,
     gplLitro: 0.775,
-    benzinaLitro: 1.855,
-    benzinaKg: 2.507
-  },
-  "veneto": {
-    region: "Veneto",
-    metanoKg: 1.925,
-    gplKg: 1.418,
-    gplLitro: 0.766,
-    benzinaLitro: 1.842,
-    benzinaKg: 2.489
-  },
-  "toscana": {
-    region: "Toscana",
-    metanoKg: 1.945,
-    gplKg: 1.442,
-    gplLitro: 0.779,
-    benzinaLitro: 1.862,
-    benzinaKg: 2.516
-  },
-  "marche": {
-    region: "Marche",
-    metanoKg: 1.932,
-    gplKg: 1.429,
-    gplLitro: 0.772,
-    benzinaLitro: 1.848,
-    benzinaKg: 2.497
+    gplKg: 1.435,
+    benzinaLitro: 2.007,
+    benzinaKg: 2.712,
+    gasolioLitro: 2.250
   },
   "italia-media": {
-    region: "Media Nazionale Italia",
-    metanoKg: 1.938,
-    gplKg: 1.431,
-    gplLitro: 0.773,
-    benzinaLitro: 1.850,
-    benzinaKg: 2.500
+    region: "Media Nazionale Italia (21.517 distributori)",
+    slug: "national",
+    apiEndpoint: "https://mappacarburanti.it/api/prezzi/national.json",
+    metanoKg: 1.946,
+    gplLitro: 0.783,
+    gplKg: 1.450,
+    benzinaLitro: 2.032,
+    benzinaKg: 2.746,
+    gasolioLitro: 2.258
   }
 };
 
