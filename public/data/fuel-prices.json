@@ -3,7 +3,7 @@
   "apiBaseUrl": "https://mappacarburanti.it/api/prezzi/",
   "legalReference": "Decreto Legge 14 gennaio 2023, n. 5 — Open Data MIMIT",
   "mimitExtractionDate": "2026-10-21",
-  "lastUpdate": "2026-10-29T13:27:12.379Z",
+  "lastUpdate": "2026-10-30T13:16:36.508Z",
   "lastUpdateDisplay": "API MIMIT Live (2026-10-21)",
   "regions": {
     "forli": {
